@@ -9,19 +9,24 @@ describe('getMenuById', () => {
   beforeEach(createDB);
   afterEach(resetDB);
 
+  it('should return null for non-existent menu', async () => {
+    const result = await getMenuById(999);
+    expect(result).toBeNull();
+  });
+
   it('should return menu with service options and reviews', async () => {
     // Create test menu
-    const menuResult = await db.insert(menusTable)
+    const menuResults = await db.insert(menusTable)
       .values({
         name: 'Test Menu',
-        description: 'A test menu',
-        thumbnail_image_url: 'https://example.com/thumb.jpg',
+        description: 'A delicious test menu',
+        thumbnail_image_url: 'https://example.com/image.jpg',
         average_rating: '4.5'
       })
       .returning()
       .execute();
 
-    const menuId = menuResult[0].id;
+    const menuId = menuResults[0].id;
 
     // Create service options
     await db.insert(serviceOptionsTable)
@@ -49,7 +54,7 @@ describe('getMenuById', () => {
           customer_name: 'John Doe',
           customer_email: 'john@example.com',
           rating: 5,
-          comment: 'Excellent!'
+          comment: 'Excellent food!'
         },
         {
           menu_id: menuId,
@@ -61,59 +66,55 @@ describe('getMenuById', () => {
       ])
       .execute();
 
-    // Test the handler
     const result = await getMenuById(menuId);
 
     expect(result).not.toBeNull();
-    expect(result!.id).toBe(menuId);
-    expect(result!.name).toBe('Test Menu');
-    expect(result!.description).toBe('A test menu');
-    expect(result!.thumbnail_image_url).toBe('https://example.com/thumb.jpg');
-    expect(result!.average_rating).toBe(4.5);
+    expect(result!.id).toEqual(menuId);
+    expect(result!.name).toEqual('Test Menu');
+    expect(result!.description).toEqual('A delicious test menu');
+    expect(result!.thumbnail_image_url).toEqual('https://example.com/image.jpg');
+    expect(result!.average_rating).toEqual(4.5);
     expect(typeof result!.average_rating).toBe('number');
 
     // Check service options
     expect(result!.service_options).toHaveLength(2);
-    expect(result!.service_options[0].price_per_person).toBe(25.99);
-    expect(result!.service_options[1].price_per_person).toBe(19.99);
+    expect(result!.service_options[0].price_per_person).toEqual(25.99);
     expect(typeof result!.service_options[0].price_per_person).toBe('number');
+    expect(result!.service_options[1].price_per_person).toEqual(19.99);
+    expect(typeof result!.service_options[1].price_per_person).toBe('number');
+
+    // Check min price calculation
+    expect(result!.min_price).toEqual(19.99);
+    expect(typeof result!.min_price).toBe('number');
 
     // Check reviews
     expect(result!.reviews).toHaveLength(2);
-    expect(result!.reviews[0].customer_name).toBe('John Doe');
-    expect(result!.reviews[0].rating).toBe(5);
-    expect(result!.reviews[1].customer_name).toBe('Jane Smith');
-    expect(result!.reviews[1].rating).toBe(4);
-
-    // Check min price calculation
-    expect(result!.min_price).toBe(19.99);
-    expect(typeof result!.min_price).toBe('number');
-  });
-
-  it('should return null for non-existent menu', async () => {
-    const result = await getMenuById(999);
-    expect(result).toBeNull();
+    expect(result!.reviews[0].customer_name).toEqual('John Doe');
+    expect(result!.reviews[0].rating).toEqual(5);
+    expect(result!.reviews[1].customer_name).toEqual('Jane Smith');
+    expect(result!.reviews[1].rating).toEqual(4);
   });
 
   it('should handle menu with no service options or reviews', async () => {
     // Create menu without service options or reviews
-    const menuResult = await db.insert(menusTable)
+    const menuResults = await db.insert(menusTable)
       .values({
         name: 'Empty Menu',
-        description: 'Menu with no options',
+        description: null,
         thumbnail_image_url: null,
         average_rating: null
       })
       .returning()
       .execute();
 
-    const menuId = menuResult[0].id;
-
+    const menuId = menuResults[0].id;
     const result = await getMenuById(menuId);
 
     expect(result).not.toBeNull();
-    expect(result!.id).toBe(menuId);
-    expect(result!.name).toBe('Empty Menu');
+    expect(result!.id).toEqual(menuId);
+    expect(result!.name).toEqual('Empty Menu');
+    expect(result!.description).toBeNull();
+    expect(result!.thumbnail_image_url).toBeNull();
     expect(result!.average_rating).toBeNull();
     expect(result!.service_options).toHaveLength(0);
     expect(result!.reviews).toHaveLength(0);
@@ -121,20 +122,20 @@ describe('getMenuById', () => {
   });
 
   it('should handle menu with service options but no reviews', async () => {
-    // Create test menu
-    const menuResult = await db.insert(menusTable)
+    // Create menu
+    const menuResults = await db.insert(menusTable)
       .values({
-        name: 'Menu with Options',
-        description: 'Has service options only',
+        name: 'Service Only Menu',
+        description: 'Menu with services only',
         thumbnail_image_url: null,
         average_rating: null
       })
       .returning()
       .execute();
 
-    const menuId = menuResult[0].id;
+    const menuId = menuResults[0].id;
 
-    // Create service option
+    // Create single service option
     await db.insert(serviceOptionsTable)
       .values({
         menu_id: menuId,
@@ -148,8 +149,9 @@ describe('getMenuById', () => {
 
     expect(result).not.toBeNull();
     expect(result!.service_options).toHaveLength(1);
-    expect(result!.service_options[0].price_per_person).toBe(35.00);
+    expect(result!.service_options[0].service_type).toEqual('cook-along');
+    expect(result!.service_options[0].price_per_person).toEqual(35.00);
     expect(result!.reviews).toHaveLength(0);
-    expect(result!.min_price).toBe(35.00);
+    expect(result!.min_price).toEqual(35.00);
   });
 });

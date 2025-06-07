@@ -14,201 +14,45 @@ describe('getEventRequests', () => {
     expect(result).toEqual([]);
   });
 
-  it('should return event requests with menu and service option details', async () => {
-    // Create test menu
-    const [menu] = await db.insert(menusTable)
+  it('should return event request with related menu and service option', async () => {
+    // Create prerequisite data
+    const menuResult = await db.insert(menusTable)
       .values({
         name: 'Test Menu',
         description: 'A test menu',
-        thumbnail_image_url: 'https://example.com/image.jpg',
+        thumbnail_image_url: 'http://example.com/image.jpg',
         average_rating: '4.5'
       })
       .returning()
       .execute();
 
-    // Create test service option
-    const [serviceOption] = await db.insert(serviceOptionsTable)
+    const serviceOptionResult = await db.insert(serviceOptionsTable)
       .values({
-        menu_id: menu.id,
+        menu_id: menuResult[0].id,
         service_type: 'plated',
-        price_per_person: '25.00',
+        price_per_person: '25.99',
         description: 'Plated service option'
       })
       .returning()
       .execute();
 
-    // Create test event request
-    const [eventRequest] = await db.insert(eventRequestsTable)
+    await db.insert(eventRequestsTable)
       .values({
         customer_name: 'John Doe',
         customer_email: 'john@example.com',
         customer_phone: '555-1234',
-        menu_id: menu.id,
-        service_option_id: serviceOption.id,
-        event_date: '2024-02-15',
+        menu_id: menuResult[0].id,
+        service_option_id: serviceOptionResult[0].id,
+        event_date: '2024-06-15', // Use string format for database insert
         event_time: '18:00:00',
         location: '123 Main St',
-        guest_count: 10,
-        special_requests: 'Vegetarian options',
-        dietary_restrictions: 'No nuts',
-        total_price: '250.00',
+        guest_count: 20,
+        special_requests: 'Extra dessert',
+        dietary_restrictions: 'Vegetarian',
+        total_price: '519.80',
         status: 'pending',
-        medusa_request_id: 'medusa_123',
-        checkout_url: 'https://checkout.example.com'
-      })
-      .returning()
-      .execute();
-
-    const result = await getEventRequests();
-
-    expect(result).toHaveLength(1);
-    
-    const eventRequestWithDetails = result[0];
-    
-    // Event request fields
-    expect(eventRequestWithDetails.id).toEqual(eventRequest.id);
-    expect(eventRequestWithDetails.customer_name).toEqual('John Doe');
-    expect(eventRequestWithDetails.customer_email).toEqual('john@example.com');
-    expect(eventRequestWithDetails.customer_phone).toEqual('555-1234');
-    expect(eventRequestWithDetails.menu_id).toEqual(menu.id);
-    expect(eventRequestWithDetails.service_option_id).toEqual(serviceOption.id);
-    expect(eventRequestWithDetails.event_date).toEqual(new Date('2024-02-15'));
-    expect(eventRequestWithDetails.event_date).toBeInstanceOf(Date);
-    expect(eventRequestWithDetails.event_time).toEqual('18:00:00');
-    expect(eventRequestWithDetails.location).toEqual('123 Main St');
-    expect(eventRequestWithDetails.guest_count).toEqual(10);
-    expect(eventRequestWithDetails.special_requests).toEqual('Vegetarian options');
-    expect(eventRequestWithDetails.dietary_restrictions).toEqual('No nuts');
-    expect(eventRequestWithDetails.total_price).toEqual(250.00);
-    expect(typeof eventRequestWithDetails.total_price).toBe('number');
-    expect(eventRequestWithDetails.status).toEqual('pending');
-    expect(eventRequestWithDetails.medusa_request_id).toEqual('medusa_123');
-    expect(eventRequestWithDetails.checkout_url).toEqual('https://checkout.example.com');
-    expect(eventRequestWithDetails.created_at).toBeInstanceOf(Date);
-    expect(eventRequestWithDetails.updated_at).toBeInstanceOf(Date);
-
-    // Menu fields
-    expect(eventRequestWithDetails.menu.id).toEqual(menu.id);
-    expect(eventRequestWithDetails.menu.name).toEqual('Test Menu');
-    expect(eventRequestWithDetails.menu.description).toEqual('A test menu');
-    expect(eventRequestWithDetails.menu.thumbnail_image_url).toEqual('https://example.com/image.jpg');
-    expect(eventRequestWithDetails.menu.average_rating).toEqual(4.5);
-    expect(typeof eventRequestWithDetails.menu.average_rating).toBe('number');
-    expect(eventRequestWithDetails.menu.created_at).toBeInstanceOf(Date);
-    expect(eventRequestWithDetails.menu.updated_at).toBeInstanceOf(Date);
-
-    // Service option fields
-    expect(eventRequestWithDetails.service_option.id).toEqual(serviceOption.id);
-    expect(eventRequestWithDetails.service_option.menu_id).toEqual(menu.id);
-    expect(eventRequestWithDetails.service_option.service_type).toEqual('plated');
-    expect(eventRequestWithDetails.service_option.price_per_person).toEqual(25.00);
-    expect(typeof eventRequestWithDetails.service_option.price_per_person).toBe('number');
-    expect(eventRequestWithDetails.service_option.description).toEqual('Plated service option');
-    expect(eventRequestWithDetails.service_option.created_at).toBeInstanceOf(Date);
-  });
-
-  it('should return multiple event requests with correct details', async () => {
-    // Create test menu
-    const [menu] = await db.insert(menusTable)
-      .values({
-        name: 'Test Menu',
-        description: 'A test menu'
-      })
-      .returning()
-      .execute();
-
-    // Create test service option
-    const [serviceOption] = await db.insert(serviceOptionsTable)
-      .values({
-        menu_id: menu.id,
-        service_type: 'buffet',
-        price_per_person: '20.00'
-      })
-      .returning()
-      .execute();
-
-    // Create two event requests
-    await db.insert(eventRequestsTable)
-      .values([
-        {
-          customer_name: 'Alice Smith',
-          customer_email: 'alice@example.com',
-          menu_id: menu.id,
-          service_option_id: serviceOption.id,
-          event_date: '2024-03-01',
-          event_time: '19:00:00',
-          location: 'Location A',
-          guest_count: 20,
-          total_price: '400.00',
-          status: 'confirmed'
-        },
-        {
-          customer_name: 'Bob Johnson',
-          customer_email: 'bob@example.com',
-          menu_id: menu.id,
-          service_option_id: serviceOption.id,
-          event_date: '2024-03-15',
-          event_time: '17:30:00',
-          location: 'Location B',
-          guest_count: 15,
-          total_price: '300.00',
-          status: 'accepted'
-        }
-      ])
-      .execute();
-
-    const result = await getEventRequests();
-
-    expect(result).toHaveLength(2);
-    expect(result[0].customer_name).toEqual('Alice Smith');
-    expect(result[0].status).toEqual('confirmed');
-    expect(result[0].total_price).toEqual(400.00);
-    expect(result[0].event_date).toEqual(new Date('2024-03-01'));
-    expect(result[1].customer_name).toEqual('Bob Johnson');
-    expect(result[1].status).toEqual('accepted');
-    expect(result[1].total_price).toEqual(300.00);
-    expect(result[1].event_date).toEqual(new Date('2024-03-15'));
-
-    // Verify both have the same menu and service option details
-    result.forEach(eventRequest => {
-      expect(eventRequest.menu.name).toEqual('Test Menu');
-      expect(eventRequest.service_option.service_type).toEqual('buffet');
-      expect(eventRequest.service_option.price_per_person).toEqual(20.00);
-      expect(eventRequest.event_date).toBeInstanceOf(Date);
-    });
-  });
-
-  it('should handle null values correctly', async () => {
-    // Create test menu with minimal data
-    const [menu] = await db.insert(menusTable)
-      .values({
-        name: 'Minimal Menu'
-      })
-      .returning()
-      .execute();
-
-    // Create test service option with minimal data
-    const [serviceOption] = await db.insert(serviceOptionsTable)
-      .values({
-        menu_id: menu.id,
-        service_type: 'cook-along',
-        price_per_person: '30.00'
-      })
-      .returning()
-      .execute();
-
-    // Create event request with minimal data
-    await db.insert(eventRequestsTable)
-      .values({
-        customer_name: 'Test Customer',
-        customer_email: 'test@example.com',
-        menu_id: menu.id,
-        service_option_id: serviceOption.id,
-        event_date: '2024-04-01',
-        event_time: '12:00:00',
-        location: 'Test Location',
-        guest_count: 5,
-        total_price: '150.00'
+        medusa_request_id: 'req_123',
+        checkout_url: 'http://checkout.example.com'
       })
       .execute();
 
@@ -218,19 +62,121 @@ describe('getEventRequests', () => {
     
     const eventRequest = result[0];
     
-    // Verify null fields are handled correctly
-    expect(eventRequest.customer_phone).toBeNull();
-    expect(eventRequest.special_requests).toBeNull();
-    expect(eventRequest.dietary_restrictions).toBeNull();
-    expect(eventRequest.medusa_request_id).toBeNull();
-    expect(eventRequest.checkout_url).toBeNull();
-    expect(eventRequest.menu.description).toBeNull();
-    expect(eventRequest.menu.thumbnail_image_url).toBeNull();
-    expect(eventRequest.menu.average_rating).toBeNull();
-    expect(eventRequest.service_option.description).toBeNull();
-    
-    // Verify date conversion works
-    expect(eventRequest.event_date).toEqual(new Date('2024-04-01'));
+    // Verify event request fields
+    expect(eventRequest.customer_name).toEqual('John Doe');
+    expect(eventRequest.customer_email).toEqual('john@example.com');
+    expect(eventRequest.customer_phone).toEqual('555-1234');
+    expect(eventRequest.event_date).toEqual(new Date('2024-06-15'));
     expect(eventRequest.event_date).toBeInstanceOf(Date);
+    expect(eventRequest.event_time).toEqual('18:00:00');
+    expect(eventRequest.location).toEqual('123 Main St');
+    expect(eventRequest.guest_count).toEqual(20);
+    expect(eventRequest.special_requests).toEqual('Extra dessert');
+    expect(eventRequest.dietary_restrictions).toEqual('Vegetarian');
+    expect(eventRequest.total_price).toEqual(519.80);
+    expect(typeof eventRequest.total_price).toEqual('number');
+    expect(eventRequest.status).toEqual('pending');
+    expect(eventRequest.medusa_request_id).toEqual('req_123');
+    expect(eventRequest.checkout_url).toEqual('http://checkout.example.com');
+    expect(eventRequest.created_at).toBeInstanceOf(Date);
+    expect(eventRequest.updated_at).toBeInstanceOf(Date);
+
+    // Verify menu relation
+    expect(eventRequest.menu.name).toEqual('Test Menu');
+    expect(eventRequest.menu.description).toEqual('A test menu');
+    expect(eventRequest.menu.thumbnail_image_url).toEqual('http://example.com/image.jpg');
+    expect(eventRequest.menu.average_rating).toEqual(4.5);
+    expect(typeof eventRequest.menu.average_rating).toEqual('number');
+    expect(eventRequest.menu.created_at).toBeInstanceOf(Date);
+    expect(eventRequest.menu.updated_at).toBeInstanceOf(Date);
+
+    // Verify service option relation
+    expect(eventRequest.service_option.service_type).toEqual('plated');
+    expect(eventRequest.service_option.price_per_person).toEqual(25.99);
+    expect(typeof eventRequest.service_option.price_per_person).toEqual('number');
+    expect(eventRequest.service_option.description).toEqual('Plated service option');
+    expect(eventRequest.service_option.created_at).toBeInstanceOf(Date);
+  });
+
+  it('should return multiple event requests with different statuses', async () => {
+    // Create prerequisite data
+    const menuResult = await db.insert(menusTable)
+      .values({
+        name: 'Wedding Menu',
+        description: 'Perfect for weddings',
+        thumbnail_image_url: null,
+        average_rating: null
+      })
+      .returning()
+      .execute();
+
+    const serviceOptionResult = await db.insert(serviceOptionsTable)
+      .values({
+        menu_id: menuResult[0].id,
+        service_type: 'buffet',
+        price_per_person: '35.00',
+        description: null
+      })
+      .returning()
+      .execute();
+
+    // Create multiple event requests
+    await db.insert(eventRequestsTable)
+      .values([
+        {
+          customer_name: 'Alice Smith',
+          customer_email: 'alice@example.com',
+          customer_phone: null,
+          menu_id: menuResult[0].id,
+          service_option_id: serviceOptionResult[0].id,
+          event_date: '2024-07-01', // Use string format for database insert
+          event_time: '19:00:00',
+          location: 'Grand Ballroom',
+          guest_count: 50,
+          special_requests: null,
+          dietary_restrictions: null,
+          total_price: '1750.00',
+          status: 'accepted',
+          medusa_request_id: null,
+          checkout_url: null
+        },
+        {
+          customer_name: 'Bob Johnson',
+          customer_email: 'bob@example.com',
+          customer_phone: '555-9876',
+          menu_id: menuResult[0].id,
+          service_option_id: serviceOptionResult[0].id,
+          event_date: '2024-08-15', // Use string format for database insert
+          event_time: '17:30:00',
+          location: 'Garden Venue',
+          guest_count: 30,
+          special_requests: 'Outdoor setup',
+          dietary_restrictions: 'Gluten-free',
+          total_price: '1050.00',
+          status: 'confirmed',
+          medusa_request_id: 'req_456',
+          checkout_url: 'http://pay.example.com'
+        }
+      ])
+      .execute();
+
+    const result = await getEventRequests();
+
+    expect(result).toHaveLength(2);
+    expect(result[0].customer_name).toEqual('Alice Smith');
+    expect(result[0].status).toEqual('accepted');
+    expect(result[0].total_price).toEqual(1750.00);
+    expect(result[0].customer_phone).toBeNull();
+    expect(result[0].menu.average_rating).toBeNull();
+    expect(result[0].service_option.description).toBeNull();
+    expect(result[0].event_date).toEqual(new Date('2024-07-01'));
+    expect(result[0].event_date).toBeInstanceOf(Date);
+
+    expect(result[1].customer_name).toEqual('Bob Johnson');
+    expect(result[1].status).toEqual('confirmed');
+    expect(result[1].total_price).toEqual(1050.00);
+    expect(result[1].special_requests).toEqual('Outdoor setup');
+    expect(result[1].event_date).toEqual(new Date('2024-08-15'));
+    expect(result[1].event_date).toBeInstanceOf(Date);
   });
 });

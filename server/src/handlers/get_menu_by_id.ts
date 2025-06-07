@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 
 export const getMenuById = async (id: number): Promise<MenuWithReviews | null> => {
   try {
-    // Get the menu
+    // First get the menu
     const menus = await db.select()
       .from(menusTable)
       .where(eq(menusTable.id, id))
@@ -31,7 +31,7 @@ export const getMenuById = async (id: number): Promise<MenuWithReviews | null> =
       .execute();
 
     // Calculate min price from service options
-    const minPrice = serviceOptions.length > 0
+    const minPrice = serviceOptions.length > 0 
       ? Math.min(...serviceOptions.map(option => parseFloat(option.price_per_person)))
       : null;
 
@@ -43,11 +43,11 @@ export const getMenuById = async (id: number): Promise<MenuWithReviews | null> =
         ...option,
         price_per_person: parseFloat(option.price_per_person)
       })),
-      reviews,
+      reviews: reviews,
       min_price: minPrice
     };
   } catch (error) {
-    console.error('Failed to get menu by id:', error);
+    console.error('Get menu by ID failed:', error);
     throw error;
   }
 };

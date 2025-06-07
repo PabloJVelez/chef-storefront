@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 
 export const createReview = async (input: CreateReviewInput): Promise<Review> => {
   try {
-    // Verify menu exists
+    // Verify that the menu exists
     const menu = await db.select()
       .from(menusTable)
       .where(eq(menusTable.id, input.menu_id))

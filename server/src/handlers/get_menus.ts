@@ -2,62 +2,63 @@
 import { db } from '../db';
 import { menusTable, serviceOptionsTable } from '../db/schema';
 import { type MenuWithServiceOptions } from '../schema';
-import { eq, asc, min } from 'drizzle-orm';
+import { eq, min } from 'drizzle-orm';
 
 export const getMenus = async (): Promise<MenuWithServiceOptions[]> => {
   try {
-    // Get all menus
-    const menus = await db.select()
+    // Get all menus with their service options
+    const menusWithOptions = await db.select()
       .from(menusTable)
-      .orderBy(asc(menusTable.name))
+      .leftJoin(serviceOptionsTable, eq(menusTable.id, serviceOptionsTable.menu_id))
       .execute();
 
-    // Get all service options
-    const serviceOptions = await db.select()
-      .from(serviceOptionsTable)
-      .orderBy(asc(serviceOptionsTable.service_type))
-      .execute();
+    // Group service options by menu
+    const menuMap = new Map<number, MenuWithServiceOptions>();
 
-    // Get minimum price for each menu
-    const minPrices = await db.select({
-      menu_id: serviceOptionsTable.menu_id,
-      min_price: min(serviceOptionsTable.price_per_person)
-    })
-      .from(serviceOptionsTable)
-      .groupBy(serviceOptionsTable.menu_id)
-      .execute();
+    for (const result of menusWithOptions) {
+      const menu = result.menus;
+      const serviceOption = result.service_options;
 
-    // Create a map for quick lookup
-    const serviceOptionsByMenu = new Map<number, any[]>();
-    const minPricesByMenu = new Map<number, number>();
-
-    // Group service options by menu_id
-    serviceOptions.forEach(option => {
-      if (!serviceOptionsByMenu.has(option.menu_id)) {
-        serviceOptionsByMenu.set(option.menu_id, []);
+      if (!menuMap.has(menu.id)) {
+        menuMap.set(menu.id, {
+          id: menu.id,
+          name: menu.name,
+          description: menu.description,
+          thumbnail_image_url: menu.thumbnail_image_url,
+          average_rating: menu.average_rating ? parseFloat(menu.average_rating) : null,
+          created_at: menu.created_at,
+          updated_at: menu.updated_at,
+          service_options: [],
+          min_price: null
+        });
       }
-      serviceOptionsByMenu.get(option.menu_id)!.push({
-        ...option,
-        price_per_person: parseFloat(option.price_per_person) // Convert numeric to number
-      });
-    });
 
-    // Map minimum prices by menu_id
-    minPrices.forEach(({ menu_id, min_price }) => {
-      if (min_price !== null) {
-        minPricesByMenu.set(menu_id, parseFloat(min_price));
+      const menuWithOptions = menuMap.get(menu.id)!;
+
+      // Add service option if it exists
+      if (serviceOption) {
+        menuWithOptions.service_options.push({
+          id: serviceOption.id,
+          menu_id: serviceOption.menu_id,
+          service_type: serviceOption.service_type,
+          price_per_person: parseFloat(serviceOption.price_per_person),
+          description: serviceOption.description,
+          created_at: serviceOption.created_at
+        });
       }
-    });
+    }
 
-    // Combine menus with their service options and min prices
-    return menus.map(menu => ({
-      ...menu,
-      average_rating: menu.average_rating ? parseFloat(menu.average_rating) : null, // Convert numeric to number
-      service_options: serviceOptionsByMenu.get(menu.id) || [],
-      min_price: minPricesByMenu.get(menu.id) || null
-    }));
+    // Calculate min_price for each menu
+    const menus = Array.from(menuMap.values());
+    for (const menu of menus) {
+      if (menu.service_options.length > 0) {
+        menu.min_price = Math.min(...menu.service_options.map(option => option.price_per_person));
+      }
+    }
+
+    return menus;
   } catch (error) {
-    console.error('Failed to get menus:', error);
+    console.error('Get menus failed:', error);
     throw error;
   }
 };

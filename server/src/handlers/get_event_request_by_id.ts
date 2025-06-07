@@ -20,6 +20,7 @@ export const getEventRequestById = async (id: number): Promise<EventRequestWithD
     const result = results[0];
     
     return {
+      // Event request fields
       id: result.event_requests.id,
       customer_name: result.event_requests.customer_name,
       customer_email: result.event_requests.customer_email,
@@ -38,6 +39,8 @@ export const getEventRequestById = async (id: number): Promise<EventRequestWithD
       checkout_url: result.event_requests.checkout_url,
       created_at: result.event_requests.created_at,
       updated_at: result.event_requests.updated_at,
+      
+      // Menu relation
       menu: {
         id: result.menus.id,
         name: result.menus.name,
@@ -47,6 +50,8 @@ export const getEventRequestById = async (id: number): Promise<EventRequestWithD
         created_at: result.menus.created_at,
         updated_at: result.menus.updated_at
       },
+      
+      // Service option relation
       service_option: {
         id: result.service_options.id,
         menu_id: result.service_options.menu_id,
@@ -57,7 +62,7 @@ export const getEventRequestById = async (id: number): Promise<EventRequestWithD
       }
     };
   } catch (error) {
-    console.error('Failed to get event request by id:', error);
+    console.error('Get event request by ID failed:', error);
     throw error;
   }
 };

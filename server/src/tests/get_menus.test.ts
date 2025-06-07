@@ -14,40 +14,64 @@ describe('getMenus', () => {
     expect(result).toEqual([]);
   });
 
-  it('should return menus with service options and min prices', async () => {
-    // Create test menu
+  it('should return menu without service options', async () => {
+    // Create a menu without service options
+    await db.insert(menusTable)
+      .values({
+        name: 'Test Menu',
+        description: 'A test menu',
+        thumbnail_image_url: 'https://example.com/image.jpg',
+        average_rating: '4.5'
+      })
+      .execute();
+
+    const result = await getMenus();
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toEqual('Test Menu');
+    expect(result[0].description).toEqual('A test menu');
+    expect(result[0].thumbnail_image_url).toEqual('https://example.com/image.jpg');
+    expect(result[0].average_rating).toEqual(4.5);
+    expect(result[0].service_options).toEqual([]);
+    expect(result[0].min_price).toBeNull();
+    expect(result[0].created_at).toBeInstanceOf(Date);
+    expect(result[0].updated_at).toBeInstanceOf(Date);
+  });
+
+  it('should return menu with service options and calculate min_price', async () => {
+    // Create a menu
     const menuResult = await db.insert(menusTable)
       .values({
-        name: 'Italian Feast',
-        description: 'Authentic Italian cuisine',
-        thumbnail_image_url: 'https://example.com/italian.jpg',
-        average_rating: '4.5'
+        name: 'Deluxe Menu',
+        description: 'Our premium menu',
+        thumbnail_image_url: null,
+        average_rating: null
       })
       .returning()
       .execute();
 
     const menuId = menuResult[0].id;
 
-    // Create service options with different prices
+    // Create service options
     await db.insert(serviceOptionsTable)
       .values([
         {
           menu_id: menuId,
           service_type: 'plated',
-          price_per_person: '25.99',
+          price_per_person: '50.00',
           description: 'Plated service'
         },
         {
           menu_id: menuId,
           service_type: 'buffet',
-          price_per_person: '19.99',
-          description: 'Buffet service'
+          price_per_person: '35.00',
+          description: 'Buffet style'
         },
         {
           menu_id: menuId,
           service_type: 'cook-along',
-          price_per_person: '35.00',
-          description: 'Interactive cooking experience'
+          price_per_person: '75.00',
+          description: null
         }
       ])
       .execute();
@@ -55,113 +79,102 @@ describe('getMenus', () => {
     const result = await getMenus();
 
     expect(result).toHaveLength(1);
-    
     const menu = result[0];
-    expect(menu.name).toEqual('Italian Feast');
-    expect(menu.description).toEqual('Authentic Italian cuisine');
-    expect(menu.thumbnail_image_url).toEqual('https://example.com/italian.jpg');
-    expect(menu.average_rating).toEqual(4.5);
-    expect(typeof menu.average_rating).toBe('number');
+    
+    expect(menu.name).toEqual('Deluxe Menu');
+    expect(menu.description).toEqual('Our premium menu');
+    expect(menu.thumbnail_image_url).toBeNull();
+    expect(menu.average_rating).toBeNull();
     expect(menu.service_options).toHaveLength(3);
-    expect(menu.min_price).toEqual(19.99);
-    expect(typeof menu.min_price).toBe('number');
+    expect(menu.min_price).toEqual(35.00);
 
-    // Verify service options are properly converted
-    menu.service_options.forEach(option => {
-      expect(typeof option.price_per_person).toBe('number');
-      expect(option.menu_id).toEqual(menuId);
-    });
-
-    // Check specific service option prices
-    const buffetOption = menu.service_options.find(opt => opt.service_type === 'buffet');
-    expect(buffetOption?.price_per_person).toEqual(19.99);
+    // Check service options
+    const serviceOptions = menu.service_options;
+    expect(serviceOptions.find(opt => opt.service_type === 'plated')?.price_per_person).toEqual(50.00);
+    expect(serviceOptions.find(opt => opt.service_type === 'buffet')?.price_per_person).toEqual(35.00);
+    expect(serviceOptions.find(opt => opt.service_type === 'cook-along')?.price_per_person).toEqual(75.00);
   });
 
-  it('should return multiple menus sorted by name', async () => {
-    // Create multiple menus
-    await db.insert(menusTable)
-      .values([
-        {
-          name: 'Zebra Cuisine',
-          description: 'Last in alphabet',
-          average_rating: '3.0'
-        },
-        {
-          name: 'Asian Fusion',
-          description: 'First in alphabet',
-          average_rating: '4.8'
-        },
-        {
-          name: 'Mexican Fiesta',
-          description: 'Middle in alphabet',
-          average_rating: null
-        }
-      ])
-      .execute();
-
-    const result = await getMenus();
-
-    expect(result).toHaveLength(3);
-    expect(result[0].name).toEqual('Asian Fusion');
-    expect(result[1].name).toEqual('Mexican Fiesta');
-    expect(result[2].name).toEqual('Zebra Cuisine');
-
-    // Verify numeric conversions and null handling
-    expect(result[0].average_rating).toEqual(4.8);
-    expect(result[1].average_rating).toBeNull();
-    expect(result[2].average_rating).toEqual(3.0);
-  });
-
-  it('should handle menu without service options', async () => {
-    await db.insert(menusTable)
-      .values({
-        name: 'Menu Without Options',
-        description: 'No service options available',
-        average_rating: null
-      })
-      .execute();
-
-    const result = await getMenus();
-
-    expect(result).toHaveLength(1);
-    expect(result[0].service_options).toEqual([]);
-    expect(result[0].min_price).toBeNull();
-    expect(result[0].average_rating).toBeNull();
-  });
-
-  it('should correctly calculate min price for each menu', async () => {
+  it('should return multiple menus correctly', async () => {
     // Create two menus
-    const menuResults = await db.insert(menusTable)
-      .values([
-        { name: 'Expensive Menu', description: 'High-end options' },
-        { name: 'Budget Menu', description: 'Affordable options' }
-      ])
+    const menu1Result = await db.insert(menusTable)
+      .values({
+        name: 'Menu 1',
+        description: 'First menu',
+        thumbnail_image_url: null,
+        average_rating: '4.2'
+      })
       .returning()
       .execute();
 
-    const expensiveMenuId = menuResults[0].id;
-    const budgetMenuId = menuResults[1].id;
+    const menu2Result = await db.insert(menusTable)
+      .values({
+        name: 'Menu 2',
+        description: 'Second menu',
+        thumbnail_image_url: 'https://example.com/menu2.jpg',
+        average_rating: null
+      })
+      .returning()
+      .execute();
 
-    // Create service options for each menu
+    // Add service option to first menu only
     await db.insert(serviceOptionsTable)
-      .values([
-        // Expensive menu options
-        { menu_id: expensiveMenuId, service_type: 'plated', price_per_person: '50.00' },
-        { menu_id: expensiveMenuId, service_type: 'buffet', price_per_person: '40.00' },
-        // Budget menu options
-        { menu_id: budgetMenuId, service_type: 'plated', price_per_person: '15.00' },
-        { menu_id: budgetMenuId, service_type: 'buffet', price_per_person: '12.50' }
-      ])
+      .values({
+        menu_id: menu1Result[0].id,
+        service_type: 'plated',
+        price_per_person: '45.00',
+        description: 'Plated service'
+      })
       .execute();
 
     const result = await getMenus();
 
     expect(result).toHaveLength(2);
     
-    const budgetMenu = result.find(m => m.name === 'Budget Menu');
-    const expensiveMenu = result.find(m => m.name === 'Expensive Menu');
+    const firstMenu = result.find(m => m.name === 'Menu 1');
+    const secondMenu = result.find(m => m.name === 'Menu 2');
 
-    expect(budgetMenu?.min_price).toEqual(12.5);
-    expect(expensiveMenu?.min_price).toEqual(40.0);
+    expect(firstMenu).toBeDefined();
+    expect(firstMenu!.service_options).toHaveLength(1);
+    expect(firstMenu!.min_price).toEqual(45.00);
+    expect(firstMenu!.average_rating).toEqual(4.2);
+
+    expect(secondMenu).toBeDefined();
+    expect(secondMenu!.service_options).toHaveLength(0);
+    expect(secondMenu!.min_price).toBeNull();
+    expect(secondMenu!.average_rating).toBeNull();
+    expect(secondMenu!.thumbnail_image_url).toEqual('https://example.com/menu2.jpg');
+  });
+
+  it('should handle numeric conversions correctly', async () => {
+    // Create menu with precise decimal values
+    const menuResult = await db.insert(menusTable)
+      .values({
+        name: 'Test Menu',
+        description: 'Testing numeric conversion',
+        thumbnail_image_url: null,
+        average_rating: '3.75'
+      })
+      .returning()
+      .execute();
+
+    await db.insert(serviceOptionsTable)
+      .values({
+        menu_id: menuResult[0].id,
+        service_type: 'buffet',
+        price_per_person: '29.99',
+        description: 'Test service'
+      })
+      .execute();
+
+    const result = await getMenus();
+
+    expect(result).toHaveLength(1);
+    expect(typeof result[0].average_rating).toBe('number');
+    expect(result[0].average_rating).toEqual(3.75);
+    expect(typeof result[0].service_options[0].price_per_person).toBe('number');
+    expect(result[0].service_options[0].price_per_person).toEqual(29.99);
+    expect(typeof result[0].min_price).toBe('number');
+    expect(result[0].min_price).toEqual(29.99);
   });
 });

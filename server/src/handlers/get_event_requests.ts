@@ -13,41 +13,41 @@ export const getEventRequests = async (): Promise<EventRequestWithDetails[]> => 
       .execute();
 
     return results.map(result => ({
-      // Event request data
+      // Event request data with numeric conversions
       id: result.event_requests.id,
       customer_name: result.event_requests.customer_name,
       customer_email: result.event_requests.customer_email,
       customer_phone: result.event_requests.customer_phone,
       menu_id: result.event_requests.menu_id,
       service_option_id: result.event_requests.service_option_id,
-      event_date: new Date(result.event_requests.event_date),
+      event_date: new Date(result.event_requests.event_date), // Convert date string to Date object
       event_time: result.event_requests.event_time,
       location: result.event_requests.location,
       guest_count: result.event_requests.guest_count,
       special_requests: result.event_requests.special_requests,
       dietary_restrictions: result.event_requests.dietary_restrictions,
-      total_price: parseFloat(result.event_requests.total_price),
+      total_price: parseFloat(result.event_requests.total_price), // Convert numeric to number
       status: result.event_requests.status,
       medusa_request_id: result.event_requests.medusa_request_id,
       checkout_url: result.event_requests.checkout_url,
       created_at: result.event_requests.created_at,
       updated_at: result.event_requests.updated_at,
-      // Menu data
+      // Menu data with numeric conversions
       menu: {
         id: result.menus.id,
         name: result.menus.name,
         description: result.menus.description,
         thumbnail_image_url: result.menus.thumbnail_image_url,
-        average_rating: result.menus.average_rating ? parseFloat(result.menus.average_rating) : null,
+        average_rating: result.menus.average_rating ? parseFloat(result.menus.average_rating) : null, // Convert numeric to number
         created_at: result.menus.created_at,
         updated_at: result.menus.updated_at
       },
-      // Service option data
+      // Service option data with numeric conversions
       service_option: {
         id: result.service_options.id,
         menu_id: result.service_options.menu_id,
         service_type: result.service_options.service_type,
-        price_per_person: parseFloat(result.service_options.price_per_person),
+        price_per_person: parseFloat(result.service_options.price_per_person), // Convert numeric to number
         description: result.service_options.description,
         created_at: result.service_options.created_at
       }

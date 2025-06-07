@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 
 export const updateEventRequestStatus = async (input: UpdateEventRequestStatusInput): Promise<EventRequestWithDetails> => {
   try {
-    // Update the event request status and checkout_url
+    // Update the event request status
     const updateResult = await db.update(eventRequestsTable)
       .set({
         status: input.status,
@@ -37,7 +37,7 @@ export const updateEventRequestStatus = async (input: UpdateEventRequestStatusIn
 
     const joinedResult = result[0];
 
-    // Return the event request with details, converting numeric fields
+    // Return the event request with details, converting numeric fields and date fields
     return {
       id: joinedResult.event_requests.id,
       customer_name: joinedResult.event_requests.customer_name,

@@ -7,16 +7,15 @@ import { type CreateMenuInput } from '../schema';
 import { createMenu } from '../handlers/create_menu';
 import { eq } from 'drizzle-orm';
 
-// Test input with all required fields
+// Test inputs
 const testInput: CreateMenuInput = {
-  name: 'Mediterranean Feast',
-  description: 'A delicious Mediterranean menu with fresh ingredients',
+  name: 'Test Menu',
+  description: 'A delicious test menu',
   thumbnail_image_url: 'https://example.com/image.jpg'
 };
 
-// Test input with nullable fields
 const minimalInput: CreateMenuInput = {
-  name: 'Simple Menu',
+  name: 'Minimal Menu',
   description: null,
   thumbnail_image_url: null
 };
@@ -29,8 +28,8 @@ describe('createMenu', () => {
     const result = await createMenu(testInput);
 
     // Basic field validation
-    expect(result.name).toEqual('Mediterranean Feast');
-    expect(result.description).toEqual('A delicious Mediterranean menu with fresh ingredients');
+    expect(result.name).toEqual('Test Menu');
+    expect(result.description).toEqual('A delicious test menu');
     expect(result.thumbnail_image_url).toEqual('https://example.com/image.jpg');
     expect(result.average_rating).toBeNull();
     expect(result.id).toBeDefined();
@@ -42,7 +41,7 @@ describe('createMenu', () => {
     const result = await createMenu(minimalInput);
 
     // Basic field validation
-    expect(result.name).toEqual('Simple Menu');
+    expect(result.name).toEqual('Minimal Menu');
     expect(result.description).toBeNull();
     expect(result.thumbnail_image_url).toBeNull();
     expect(result.average_rating).toBeNull();
@@ -61,19 +60,21 @@ describe('createMenu', () => {
       .execute();
 
     expect(menus).toHaveLength(1);
-    expect(menus[0].name).toEqual('Mediterranean Feast');
-    expect(menus[0].description).toEqual('A delicious Mediterranean menu with fresh ingredients');
+    expect(menus[0].name).toEqual('Test Menu');
+    expect(menus[0].description).toEqual('A delicious test menu');
     expect(menus[0].thumbnail_image_url).toEqual('https://example.com/image.jpg');
     expect(menus[0].average_rating).toBeNull();
     expect(menus[0].created_at).toBeInstanceOf(Date);
     expect(menus[0].updated_at).toBeInstanceOf(Date);
   });
 
-  it('should handle numeric conversion for average_rating', async () => {
+  it('should handle numeric conversion correctly', async () => {
     const result = await createMenu(testInput);
 
-    // Verify that average_rating is properly typed as number | null
+    // Verify numeric fields are properly typed
     expect(result.average_rating).toBeNull();
-    expect(typeof result.average_rating === 'object' || typeof result.average_rating === 'number').toBe(true);
+    if (result.average_rating !== null) {
+      expect(typeof result.average_rating).toBe('number');
+    }
   });
 });

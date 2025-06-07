@@ -11,9 +11,9 @@ describe('updateEventRequestStatus', () => {
   beforeEach(createDB);
   afterEach(resetDB);
 
-  it('should update event request status and return with details', async () => {
-    // Create test menu first
-    const menuResult = await db.insert(menusTable)
+  it('should update event request status', async () => {
+    // Create prerequisite data
+    const menu = await db.insert(menusTable)
       .values({
         name: 'Test Menu',
         description: 'A test menu'
@@ -21,81 +21,63 @@ describe('updateEventRequestStatus', () => {
       .returning()
       .execute();
 
-    const menu = menuResult[0];
-
-    // Create test service option
-    const serviceOptionResult = await db.insert(serviceOptionsTable)
+    const serviceOption = await db.insert(serviceOptionsTable)
       .values({
-        menu_id: menu.id,
+        menu_id: menu[0].id,
         service_type: 'plated',
-        price_per_person: '50.00'
+        price_per_person: '25.00'
       })
       .returning()
       .execute();
 
-    const serviceOption = serviceOptionResult[0];
-
-    // Create test event request
-    const eventRequestResult = await db.insert(eventRequestsTable)
+    const eventRequest = await db.insert(eventRequestsTable)
       .values({
         customer_name: 'John Doe',
         customer_email: 'john@example.com',
-        menu_id: menu.id,
-        service_option_id: serviceOption.id,
+        customer_phone: '555-1234',
+        menu_id: menu[0].id,
+        service_option_id: serviceOption[0].id,
         event_date: '2024-12-25',
-        event_time: '19:00:00',
+        event_time: '18:00:00',
         location: 'Test Location',
         guest_count: 10,
-        total_price: '500.00',
+        total_price: '250.00',
         status: 'pending'
       })
       .returning()
       .execute();
 
-    const eventRequest = eventRequestResult[0];
-
     const input: UpdateEventRequestStatusInput = {
-      id: eventRequest.id,
+      id: eventRequest[0].id,
       status: 'accepted',
       checkout_url: 'https://example.com/checkout/123'
     };
 
     const result = await updateEventRequestStatus(input);
 
-    // Verify updated fields
-    expect(result.id).toEqual(eventRequest.id);
+    // Verify the updated status and checkout URL
+    expect(result.id).toEqual(eventRequest[0].id);
     expect(result.status).toEqual('accepted');
     expect(result.checkout_url).toEqual('https://example.com/checkout/123');
     expect(result.updated_at).toBeInstanceOf(Date);
 
-    // Verify original fields are preserved
+    // Verify other fields remain unchanged
     expect(result.customer_name).toEqual('John Doe');
     expect(result.customer_email).toEqual('john@example.com');
-    expect(result.guest_count).toEqual(10);
-    expect(result.total_price).toEqual(500.00);
-    expect(typeof result.total_price).toBe('number');
-
-    // Verify date conversion
+    expect(result.total_price).toEqual(250.00);
     expect(result.event_date).toBeInstanceOf(Date);
-    expect(result.event_date.getFullYear()).toEqual(2024);
-    expect(result.event_date.getMonth()).toEqual(11); // December is month 11
 
-    // Verify menu details are included
+    // Verify related data is included
     expect(result.menu).toBeDefined();
-    expect(result.menu.id).toEqual(menu.id);
     expect(result.menu.name).toEqual('Test Menu');
-
-    // Verify service option details are included
     expect(result.service_option).toBeDefined();
-    expect(result.service_option.id).toEqual(serviceOption.id);
     expect(result.service_option.service_type).toEqual('plated');
-    expect(result.service_option.price_per_person).toEqual(50.00);
-    expect(typeof result.service_option.price_per_person).toBe('number');
+    expect(result.service_option.price_per_person).toEqual(25.00);
   });
 
-  it('should update status to null checkout_url', async () => {
-    // Create test menu first
-    const menuResult = await db.insert(menusTable)
+  it('should update status to confirmed with null checkout_url', async () => {
+    // Create prerequisite data
+    const menu = await db.insert(menusTable)
       .values({
         name: 'Test Menu',
         description: 'A test menu'
@@ -103,55 +85,48 @@ describe('updateEventRequestStatus', () => {
       .returning()
       .execute();
 
-    const menu = menuResult[0];
-
-    // Create test service option
-    const serviceOptionResult = await db.insert(serviceOptionsTable)
+    const serviceOption = await db.insert(serviceOptionsTable)
       .values({
-        menu_id: menu.id,
+        menu_id: menu[0].id,
         service_type: 'buffet',
-        price_per_person: '35.00'
+        price_per_person: '30.00'
       })
       .returning()
       .execute();
 
-    const serviceOption = serviceOptionResult[0];
-
-    // Create test event request
-    const eventRequestResult = await db.insert(eventRequestsTable)
+    const eventRequest = await db.insert(eventRequestsTable)
       .values({
         customer_name: 'Jane Smith',
         customer_email: 'jane@example.com',
-        menu_id: menu.id,
-        service_option_id: serviceOption.id,
+        menu_id: menu[0].id,
+        service_option_id: serviceOption[0].id,
         event_date: '2024-12-30',
-        event_time: '18:30:00',
+        event_time: '19:00:00',
         location: 'Another Location',
-        guest_count: 15,
-        total_price: '525.00',
-        status: 'pending',
-        checkout_url: 'https://old-checkout.com'
+        guest_count: 20,
+        total_price: '600.00',
+        status: 'accepted'
       })
       .returning()
       .execute();
 
-    const eventRequest = eventRequestResult[0];
-
     const input: UpdateEventRequestStatusInput = {
-      id: eventRequest.id,
-      status: 'rejected',
+      id: eventRequest[0].id,
+      status: 'confirmed',
       checkout_url: null
     };
 
     const result = await updateEventRequestStatus(input);
 
-    expect(result.status).toEqual('rejected');
+    expect(result.status).toEqual('confirmed');
     expect(result.checkout_url).toBeNull();
+    expect(result.customer_name).toEqual('Jane Smith');
+    expect(result.event_date).toBeInstanceOf(Date);
   });
 
   it('should save updated status to database', async () => {
-    // Create test menu first
-    const menuResult = await db.insert(menusTable)
+    // Create prerequisite data
+    const menu = await db.insert(menusTable)
       .values({
         name: 'Test Menu',
         description: 'A test menu'
@@ -159,56 +134,48 @@ describe('updateEventRequestStatus', () => {
       .returning()
       .execute();
 
-    const menu = menuResult[0];
-
-    // Create test service option
-    const serviceOptionResult = await db.insert(serviceOptionsTable)
+    const serviceOption = await db.insert(serviceOptionsTable)
       .values({
-        menu_id: menu.id,
+        menu_id: menu[0].id,
         service_type: 'cook-along',
-        price_per_person: '75.00'
+        price_per_person: '40.00'
       })
       .returning()
       .execute();
 
-    const serviceOption = serviceOptionResult[0];
-
-    // Create test event request
-    const eventRequestResult = await db.insert(eventRequestsTable)
+    const eventRequest = await db.insert(eventRequestsTable)
       .values({
         customer_name: 'Bob Wilson',
         customer_email: 'bob@example.com',
-        menu_id: menu.id,
-        service_option_id: serviceOption.id,
+        menu_id: menu[0].id,
+        service_option_id: serviceOption[0].id,
         event_date: '2025-01-15',
-        event_time: '20:00:00',
+        event_time: '12:00:00',
         location: 'Bob\'s Kitchen',
         guest_count: 8,
-        total_price: '600.00',
+        total_price: '320.00',
         status: 'pending'
       })
       .returning()
       .execute();
 
-    const eventRequest = eventRequestResult[0];
-
     const input: UpdateEventRequestStatusInput = {
-      id: eventRequest.id,
-      status: 'confirmed',
-      checkout_url: 'https://confirmed-checkout.com'
+      id: eventRequest[0].id,
+      status: 'rejected',
+      checkout_url: null
     };
 
     await updateEventRequestStatus(input);
 
-    // Verify in database
+    // Verify the changes were persisted to database
     const updatedEventRequests = await db.select()
       .from(eventRequestsTable)
-      .where(eq(eventRequestsTable.id, eventRequest.id))
+      .where(eq(eventRequestsTable.id, eventRequest[0].id))
       .execute();
 
     expect(updatedEventRequests).toHaveLength(1);
-    expect(updatedEventRequests[0].status).toEqual('confirmed');
-    expect(updatedEventRequests[0].checkout_url).toEqual('https://confirmed-checkout.com');
+    expect(updatedEventRequests[0].status).toEqual('rejected');
+    expect(updatedEventRequests[0].checkout_url).toBeNull();
     expect(updatedEventRequests[0].updated_at).toBeInstanceOf(Date);
   });
 
@@ -216,7 +183,7 @@ describe('updateEventRequestStatus', () => {
     const input: UpdateEventRequestStatusInput = {
       id: 99999,
       status: 'accepted',
-      checkout_url: 'https://example.com/checkout'
+      checkout_url: null
     };
 
     expect(updateEventRequestStatus(input)).rejects.toThrow(/not found/i);

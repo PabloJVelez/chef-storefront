@@ -13,7 +13,7 @@ export const getReviewsByMenu = async (menuId: number): Promise<Review[]> => {
 
     return results;
   } catch (error) {
-    console.error('Failed to get reviews by menu:', error);
+    console.error('Get reviews by menu failed:', error);
     throw error;
   }
 };

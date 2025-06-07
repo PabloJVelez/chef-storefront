@@ -17,7 +17,7 @@ export const getServiceOptionsByMenu = async (menuId: number): Promise<ServiceOp
       price_per_person: parseFloat(option.price_per_person)
     }));
   } catch (error) {
-    console.error('Failed to get service options by menu:', error);
+    console.error('Failed to fetch service options:', error);
     throw error;
   }
 };
